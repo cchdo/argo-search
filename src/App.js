@@ -32,31 +32,43 @@ const client = new ApolloClient({
 });
 
 
-const ArgoTable = ({ loading, error, data }) => {
-      if (loading) return <p>Loading...</p>;
-      if (error) return <p>Error ...</p>;
+const GET_LATEST_PROFILES = gql`
+        query LatestProfiles($number: Int!){
+          argo_profiles(limit: $number, order_by: {date: desc}, where: { _and: {geography: {_is_null: false}, date: {_is_null: false}}}) {
+            date
+            float_id
+            geography
+            file
+          }
+        }
+`;
 
-      return data.argo_profiles.map(({ float_id, date, geography }) => (
-        <div key={float_id}>
-          <p>{float_id}: {date}</p>
-        </div>
-      ));
+
+const ArgoTable = ({ loading, error, data }) => {
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error ...</p>;
+
+  return data.argo_profiles.map(({file,  float_id, date, geography }) => (
+    <div key={file}>
+      <p>{float_id}: {date}</p>
+    </div>
+  ));
 }
 
 const Markers = ({ loading, error, data }) => {
 
-      if (loading) return <p>Loading...</p>;
-      if (error) return <p>Error ...</p>;
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error ...</p>;
 
-      return data.argo_profiles.map(({file, float_id, geography }) => (
-        <CircleMarker key={file} radius={5} center={[geography.coordinates[1], geography.coordinates[0]]}>
-          <Popup>
-            <h3>Argo Float: {float_id}</h3>
-            
-            <a href={"ftp://ftp.ifremer.fr/ifremer/argo/dac/" +file}>Download Profile</a>
-          </Popup>
-        </CircleMarker>
-      ));
+  return data.argo_profiles.map(({file, float_id, geography }) => (
+    <CircleMarker key={file} radius={5} center={[geography.coordinates[1], geography.coordinates[0]]}>
+      <Popup>
+        <h3>Argo Float: {float_id}</h3>
+
+        <a href={"ftp://ftp.ifremer.fr/ifremer/argo/dac/" +file}>Download Profile</a>
+      </Popup>
+    </CircleMarker>
+  ));
 }
 
 
@@ -66,7 +78,8 @@ class App extends Component {
     super(props);
     this.state = {
       collapsed: false,
-      selected: 'firstten'
+      selected: 'firstten',
+      number: 10
     }
   }
 
@@ -84,44 +97,34 @@ class App extends Component {
   render(){
     return(
       <ApolloProvider client={client}>
-    <Query
-      query={gql`
-        {
-          argo_profiles(limit: 50, order_by: {date: desc}, where: {date: {_is_null: false}}) {
-            date
-            float_id
-            geography
-            file
-          }
-        }
-        `}>
-      {(result) => {
-        return (
-          <div>
-        <Sidebar
-          id="sidebar"
-          position="right"
-          collapsed={this.state.collapsed}
-          closeIcon={<FiChevronRight />}
-          selected={this.state.selected}
-          onOpen={this.onOpen.bind(this)}
-          onClose={this.onClose.bind(this)}
-          >
-            <Tab id="firstten" header="First Fifty" icon={<FiSearch />}>
-              <div>
-                <ArgoTable {...result} />
-              </div>
-            </Tab>
-          </Sidebar>
-          <Map className="mapStyle" center={[0,0]} zoom={2}>
-            <TileLayer attribute="" url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'} />
-            <Markers {...result} />
-          </Map>
-        </div>
-      )}}
-      </Query>
+        <Query query={GET_LATEST_PROFILES} variables={{number:this.state.number}}>
+            {(result) => {
+              return (
+                <div>
+                  <Sidebar
+                    id="sidebar"
+                    position="right"
+                    collapsed={this.state.collapsed}
+                    closeIcon={<FiChevronRight />}
+                      selected={this.state.selected}
+                      onOpen={this.onOpen.bind(this)}
+                      onClose={this.onClose.bind(this)}
+                    >
+                      <Tab id="firstten" header="First Fifty" icon={<FiSearch />}>
+                        <div>
+                          <ArgoTable {...result} />
+                        </div>
+                      </Tab>
+                    </Sidebar>
+                    <Map className="mapStyle" center={[0,0]} zoom={2}>
+                      <TileLayer attribute="" url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'} />
+                      <Markers {...result} />
+                    </Map>
+                  </div>
+              )}}
+                </Query>
 
-        </ApolloProvider>
+              </ApolloProvider>
     )
   }
 }
