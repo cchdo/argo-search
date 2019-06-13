@@ -31,18 +31,8 @@ const client = new ApolloClient({
   uri: "https://cchdo.ucsd.edu/v1/graphql"
 });
 
-const FirstTen = () => (
-  <Query
-    query={gql`
-      {
-        argo_profiles(limit: 50, order_by: {date: desc}, where: {date: {_is_null: false}}) {
-          float_id
-          date
-          geography
-        }
-      }
-      `}>
-    {({ loading, error, data }) => {
+
+const ArgoTable = ({ loading, error, data }) => {
       if (loading) return <p>Loading...</p>;
       if (error) return <p>Error ...</p>;
 
@@ -51,21 +41,10 @@ const FirstTen = () => (
           <p>{float_id}: {date}</p>
         </div>
       ));
-    }}
-      </Query>
-);
-const Markers = () => (
-  <Query
-    query={gql`
-      {
-        argo_profiles(limit: 50, order_by: {date: desc}, where: {date: {_is_null: false}}) {
-          float_id
-          geography
-          file
-        }
-      }
-      `}>
-    {({ loading, error, data }) => {
+}
+
+const Markers = ({ loading, error, data }) => {
+
       if (loading) return <p>Loading...</p>;
       if (error) return <p>Error ...</p>;
 
@@ -78,9 +57,7 @@ const Markers = () => (
           </Popup>
         </CircleMarker>
       ));
-    }}
-      </Query>
-);
+}
 
 
 class App extends Component {
@@ -107,6 +84,20 @@ class App extends Component {
   render(){
     return(
       <ApolloProvider client={client}>
+    <Query
+      query={gql`
+        {
+          argo_profiles(limit: 50, order_by: {date: desc}, where: {date: {_is_null: false}}) {
+            date
+            float_id
+            geography
+            file
+          }
+        }
+        `}>
+      {(result) => {
+        return (
+          <div>
         <Sidebar
           id="sidebar"
           position="right"
@@ -118,14 +109,17 @@ class App extends Component {
           >
             <Tab id="firstten" header="First Fifty" icon={<FiSearch />}>
               <div>
-                <FirstTen />
+                <ArgoTable {...result} />
               </div>
             </Tab>
           </Sidebar>
           <Map className="mapStyle" center={[0,0]} zoom={2}>
             <TileLayer attribute="" url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'} />
-            <Markers />
+            <Markers {...result} />
           </Map>
+        </div>
+      )}}
+      </Query>
 
         </ApolloProvider>
     )
