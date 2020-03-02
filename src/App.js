@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+
 import { Map, TileLayer } from 'react-leaflet';
 import { CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -32,16 +33,16 @@ const client = new ApolloClient({
 });
 
 
-const GET_LATEST_PROFILES = gql`
-        query LatestProfiles($number: Int!){
-          argo_profiles(limit: $number, order_by: {date: desc}, where: { _and: {geography: {_is_null: false}, date: {_is_null: false}}}) {
-            date
-            float_id
-            geography
-            file
-          }
-        }
-`;
+//const GET_LATEST_PROFILES = gql`
+//        query LatestProfiles($number: Int!){
+//          argo_profiles(limit: $number, order_by: {date: desc}, where: { _and: {geography: {_is_null: false}, date: {_is_null: false}}}) {
+//            date
+//            float_id
+//            geography
+//            file
+//          }
+//        }
+//`;
 
 const GET_GEO_PROFILES = gql`
   query GeoProfiles($geo: geography!) {
@@ -60,9 +61,49 @@ const ArgoTable = ({ loading, error, data }) => {
   if (error) return <p>Error ...</p>;
 
 
+  //const fileStream = streamSaver.createWriteStream('argo_profiles.zip');
+
+  async function profilesDownload(data){
+    const {default: Zip} = await import("@transcend-io/conflux/write");
+    const streamSaver = await import("streamsaver");
+
+    const { writable } = new Zip();
+    const writer = writable.getWriter();
+    const base = "https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/";
+    const files = data.argo_profiles.map((prof) => prof.file).values()
+
+
+    new ReadableStream({
+      // pull gets executed whenever some
+      // other stream request more data
+      async pull(ctrl) {
+        const { done, value } = files.next()
+        if (done) {
+          ctrl.enqueue({
+            name: '/citation.txt',
+            lastModified: new Date(0),
+            stream: () => new Response('Argo (2020). Argo float data and metadata from Global Data Assembly Centre (Argo GDAC) - Snapshot of Argo GDAC of February 10st 2020. SEANOE. https://doi.org/10.17882/42182#70590').body
+          })
+          return ctrl.close()
+        }
+        const { body } = await fetch(base + value);
+        ctrl.enqueue({
+          name: `/profiles/${value.split("/").pop()}`,
+          stream: () => body
+        })
+      }
+    })
+    .pipeThrough(new Zip())
+    .pipeTo(streamSaver.createWriteStream('argo_profiles.zip'));
+
+
+    writer.close();
+  }
+  
   return (
     <>
     <h5>{data.argo_profiles.length} Profiles</h5>
+    {("BigInt" in window)? <button onClick={(() => profilesDownload(data))}>Download Profiles</button> : <span>Bulk Download not supported</span>}
     <div>
     {data.argo_profiles.map(({file,  float_id, date, geography }) => (
     <div key={file}>
@@ -84,7 +125,7 @@ const Markers = ({ loading, error, data }) => {
       <Popup>
         <h3>Argo Float: {float_id}</h3>
 
-        <a href={"ftp://ftp.ifremer.fr/ifremer/argo/dac/" +file}>Download Profile</a>
+        <a href={"https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/" +file}>Download Profile</a>
       </Popup>
     </CircleMarker>
   ));
@@ -94,9 +135,10 @@ function App() {
 
   const [collapsed, setCollapsed] = useState(false)
   const [selected, setSelected] = useState('firstten');
-  const [search, setSearch] = useState(new URLSearchParams(window.location.search))
+  //const [search, setSearch] = useState(new URLSearchParams(window.location.search))
+  const [hash] = useState(window.location.hash)
 
-  const line = search.get("line")
+  const line = decodeURIComponent(hash.slice(1))
   let geo;
   try {
     geo = JSON.parse(line)
@@ -108,6 +150,7 @@ function App() {
     client: client,
     variables: {geo: geo}
   })
+
 
   return (
     <ApolloProvider client={client}>
