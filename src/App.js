@@ -56,7 +56,7 @@ const GET_GEO_PROFILES = gql`
 `;
 
 
-const ArgoTable = ({ loading, error, data }) => {
+const ArgoTable = ({ loading, error, data, geojson}) => {
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error ...</p>;
 
@@ -102,6 +102,8 @@ const ArgoTable = ({ loading, error, data }) => {
   
   return (
     <>
+    <h4>Argo Profiles Near Cruise {geojson.properties.expocode}</h4>
+    <small>TODO: do something with the dates: {geojson.properties.startDate}/{geojson.properties.endDate}</small>
     <h5>{data.argo_profiles.length} Profiles</h5>
     {("BigInt" in window)? <button onClick={(() => profilesDownload(data))}>Download Profiles</button> : <span>Bulk Download not supported</span>}
     <div>
@@ -138,17 +140,17 @@ function App() {
   //const [search, setSearch] = useState(new URLSearchParams(window.location.search))
   const [hash] = useState(window.location.hash)
 
-  const line = decodeURIComponent(hash.slice(1))
+  const geojson = decodeURIComponent(hash.slice(1))
   let geo;
   try {
-    geo = JSON.parse(line)
+    geo = JSON.parse(geojson)
   } catch (error) {
     geo = {}
   }
 
   const {loading, error, data } = useQuery(GET_GEO_PROFILES, {
     client: client,
-    variables: {geo: geo}
+    variables: {geo: geo.geometry}
   })
 
 
@@ -166,7 +168,7 @@ function App() {
         >
           <Tab id="firstten" header="Profile List" icon={<FiSearch />}>
             <div>
-              <ArgoTable loading={loading} error={error} data={data} />
+              <ArgoTable loading={loading} error={error} data={data} geojson={geo}/>
             </div>
           </Tab>
         </Sidebar>
