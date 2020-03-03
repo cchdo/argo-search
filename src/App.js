@@ -122,15 +122,35 @@ const Markers = ({ loading, error, data }) => {
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error ...</p>;
 
-  return data.argo_profiles.map(({file, float_id, geography }) => (
-    <CircleMarker key={file} radius={4} center={[geography.coordinates[1], geography.coordinates[0]]}>
-      <Popup>
-        <h3>Argo Float: {float_id}</h3>
+  const geojson = {
+    "type": "FeatureCollection",
+    "features": data.argo_profiles.map((float)=> {
+      const {geography, ...props} = float;
+      return {
+      "type": "Feature",
+      "geometry": geography,
+      "properties": props
+    }})
+  }
+  const options ={
+    type: 'slicer',
+    data: geojson,
+    style: {
+      radius: 4,
+      weight: 0.5,
+      opacity: 1,
+      color: '#3388ff',
+      fillColor: '#3388ff',
+      fillOpacity: 0.6,
+      fill: true,
+      stroke: true
+    },
+    zIndex: 401,
+    popup: (layer) => `<div><h3>Float ID: ${layer.properties.float_id}</h3>Profile Date: ${layer.properties.date}<br /><a href="https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/${layer.properties.file}">Download netCDF</a></div>`,
+  }
 
-        <a href={"https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/" +file}>Download Profile</a>
-      </Popup>
-    </CircleMarker>
-  ));
+  return <VectorGrid {...options} />
+
 }
 
 function App() {
