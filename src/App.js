@@ -45,8 +45,8 @@ const client = new ApolloClient({
 //`;
 
 const GET_GEO_PROFILES = gql`
-  query GeoProfiles($geo: geography!) {
-    argo_profiles(order_by: {date: desc}, where: {_and: {geography: {_st_d_within: {from: $geo, distance:10000}}, date: {_is_null: false}}}) {
+  query GeoProfiles($geo: geography!, $startDate: timestamptz = "1990-01-01", $endDate: timestamptz = "2050-01-01") {
+    argo_profiles(order_by: {date: desc}, where: {_and: {geography: {_st_d_within: {from: $geo, distance:10000}}, date: {_is_null: false, _gt: $startDate, _lt: $endDate}}}) {
       date
       float_id
       geography
@@ -60,8 +60,6 @@ const ArgoTable = ({ loading, error, data, geojson}) => {
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error ...</p>;
 
-
-  //const fileStream = streamSaver.createWriteStream('argo_profiles.zip');
 
   async function profilesDownload(data){
     const {default: Zip} = await import("@transcend-io/conflux/write");
@@ -102,8 +100,6 @@ const ArgoTable = ({ loading, error, data, geojson}) => {
   
   return (
     <>
-    <h4>Argo Profiles Near Cruise {geojson.properties.expocode}</h4>
-    <small>TODO: do something with the dates: {geojson.properties.startDate}/{geojson.properties.endDate}</small>
     <h5>{data.argo_profiles.length} Profiles</h5>
     {("BigInt" in window)? <button onClick={(() => profilesDownload(data))}>Download Profiles</button> : <span>Bulk Download not supported</span>}
     <div>
@@ -137,6 +133,9 @@ function App() {
 
   const [collapsed, setCollapsed] = useState(false)
   const [selected, setSelected] = useState('firstten');
+  const [startDate, setStartDate] = useState(new Date("1990-01-01"))
+  const [endDate, setEndDate] = useState(new Date("2050-01-01"))
+
   //const [search, setSearch] = useState(new URLSearchParams(window.location.search))
   const [hash] = useState(window.location.hash)
 
@@ -146,11 +145,35 @@ function App() {
     geo = JSON.parse(geojson)
   } catch (error) {
     geo = {}
+    if (process.env.NODE_ENV === "development") {
+      geo = {
+        "type": "Feature",
+        "properties": {
+          "expocode": "318MTEST",
+          "startDate": "2013-03-21",
+          "endDate": "2013-05-01"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-212,37],[-126,38]]
+        }
+      }
+    }
   }
+
+  let cruiseStartDate, cruiseEndDate;
+  try {
+    cruiseStartDate = new Date(geo.properties.startDate)
+    cruiseEndDate = new Date(geo.properties.endDate)
+  } catch (error) {}
 
   const {loading, error, data } = useQuery(GET_GEO_PROFILES, {
     client: client,
-    variables: {geo: geo.geometry}
+    variables: {
+      geo: geo.geometry,
+      startDate: startDate,
+      endDate: endDate
+    }
   })
 
 
@@ -168,6 +191,9 @@ function App() {
         >
           <Tab id="firstten" header="Profile List" icon={<FiSearch />}>
             <div>
+              <h4>Argo Profiles Near Cruise {geo.properties.expocode}</h4>
+              <button onClick={() => {setStartDate(new Date("1990-01-01")); setEndDate(new Date("2050-01-01")) }}>Show Profiles from All Time</button><br />
+              <button onClick={() => {setStartDate(cruiseStartDate); setEndDate(cruiseEndDate) }}>Show Profiles Durring Cruise Dates ({geo.properties.startDate}/{geo.properties.endDate})</button>
               <ArgoTable loading={loading} error={error} data={data} geojson={geo}/>
             </div>
           </Tab>
