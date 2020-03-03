@@ -149,7 +149,7 @@ const Markers = ({ loading, error, data }) => {
     popup: (layer) => `<div><h3>Float ID: ${layer.properties.float_id}</h3>Profile Date: ${layer.properties.date}<br /><a href="https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/${layer.properties.file}">Download netCDF</a></div>`,
   }
 
-  return <VectorGrid {...options} />
+  return <VectorGrid key={`floats_${geojson.features.length}`} {...options} />
 
 }
 
@@ -216,8 +216,8 @@ function App() {
           <Tab id="firstten" header="Profile List" icon={<FiSearch />}>
             <div>
               <h4>Argo Profiles Near Cruise {geo.properties.expocode}</h4>
-              <button onClick={() => {setStartDate(new Date("1990-01-01")); setEndDate(new Date("2050-01-01")) }}>Show Profiles from All Time</button><br />
-              <button onClick={() => {setStartDate(cruiseStartDate); setEndDate(cruiseEndDate) }}>Show Profiles Durring Cruise Dates ({geo.properties.startDate}/{geo.properties.endDate})</button>
+              <button onClick={() => {setStartDate(new Date("1990-01-01")); setEndDate(new Date("2050-01-01")) }}>Show Colocated Profiles from All Time</button><br />
+              <button onClick={() => {setStartDate(cruiseStartDate); setEndDate(cruiseEndDate) }}>Show Colocated Profiles Durring Cruise Dates ({geo.properties.startDate}/{geo.properties.endDate})</button>
               <ArgoTable loading={loading} error={error} data={data} geojson={geo}/>
             </div>
           </Tab>
