@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 
-import { Map, TileLayer } from 'react-leaflet';
+import { Map, TileLayer, withLeaflet } from 'react-leaflet';
 import { CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Sidebar, Tab } from 'react-leaflet-sidetabs';
@@ -18,6 +18,10 @@ import L from 'leaflet';
 import marker from 'leaflet/dist/images/marker-icon.png';
 import marker2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+import VectorGridDefault from 'react-leaflet-vectorgrid';
+
+const VectorGrid = withLeaflet(VectorGridDefault);
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -164,7 +168,7 @@ function App() {
   let cruiseStartDate, cruiseEndDate;
   try {
     cruiseStartDate = new Date(geo.properties.startDate)
-    cruiseEndDate = new Date(geo.properties.endDate)
+    cruiseEndDate = new Date(`${geo.properties.endDate}T24:00:00Z`)
   } catch (error) {}
 
   const {loading, error, data } = useQuery(GET_GEO_PROFILES, {
