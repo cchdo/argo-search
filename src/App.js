@@ -82,7 +82,7 @@ const ArgoTable = ({ loading, error, data, geojson}) => {
         const { done, value } = files.next()
         if (done) {
           ctrl.enqueue({
-            name: '/citation.txt',
+            name: 'citation.txt',
             lastModified: new Date(0),
             stream: () => new Response('Argo (2020). Argo float data and metadata from Global Data Assembly Centre (Argo GDAC) - Snapshot of Argo GDAC of February 10st 2020. SEANOE. https://doi.org/10.17882/42182#70590').body
           })
@@ -90,7 +90,7 @@ const ArgoTable = ({ loading, error, data, geojson}) => {
         }
         const { body } = await fetch(base + value);
         ctrl.enqueue({
-          name: `/profiles/${value.split("/").pop()}`,
+          name: `profiles/${value.split("/").pop()}`,
           stream: () => body
         })
       }
