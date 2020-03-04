@@ -71,7 +71,7 @@ const ArgoTable = ({ loading, error, data, geojson}) => {
 
     const { writable } = new Zip();
     const writer = writable.getWriter();
-    const base = "https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/";
+    const base = "https://argocdn.cchdo.io/202002-ArgoData/dac/";
     const files = data.argo_profiles.map((prof) => prof.file).values()
 
 
@@ -146,9 +146,8 @@ const Markers = ({ loading, error, data }) => {
       stroke: true
     },
     zIndex: 401,
-    popup: (layer) => `<div><h3>Float ID: ${layer.properties.float_id}</h3>Profile Date: ${layer.properties.date}<br /><a href="https://tmp.h2o.ucsd.edu/202002-ArgoData/dac/${layer.properties.file}">Download netCDF</a></div>`,
+    popup: (layer) => `<div><h3>Float ID: ${layer.properties.float_id}</h3>Profile Date: ${layer.properties.date}<br /><a href="https://argocdn.cchdo.io/202002-ArgoData/dac/${layer.properties.file}">Download netCDF</a></div>`,
   }
-
   return <VectorGrid key={`floats_${geojson.features.length}`} {...options} />
 
 }
