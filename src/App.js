@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 
 import { Map, TileLayer, withLeaflet } from 'react-leaflet';
-import { CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Sidebar, Tab } from 'react-leaflet-sidetabs';
 
@@ -66,40 +65,40 @@ const ArgoTable = ({ loading, error, data, geojson}) => {
 
 
   async function profilesDownload(data){
-    const {default: Zip} = await import("@transcend-io/conflux/write");
+    const { Writer } = await import("@transcend-io/conflux");
     const streamSaver = await import("streamsaver");
 
-    const { writable } = new Zip();
+    const {readable, writable } = new Writer();
     const writer = writable.getWriter();
     const base = "https://argocdn.cchdo.io/202002-ArgoData/dac/";
-    const files = data.argo_profiles.map((prof) => prof.file).values()
+    const files = data.argo_profiles.map((prof) => prof.file)
 
+    const fileStream = streamSaver.createWriteStream('argo_profiles.zip');
 
-    new ReadableStream({
-      // pull gets executed whenever some
-      // other stream request more data
-      async pull(ctrl) {
-        const { done, value } = files.next()
-        if (done) {
-          ctrl.enqueue({
-            name: 'citation.txt',
-            lastModified: new Date(0),
-            stream: () => new Response('Argo (2020). Argo float data and metadata from Global Data Assembly Centre (Argo GDAC) - Snapshot of Argo GDAC of February 10st 2020. SEANOE. https://doi.org/10.17882/42182#70590').body
+    (async () =>{
+
+      const chunkSize = 10;
+
+      readable.pipeTo(fileStream);
+      writer.write({
+          name: 'citation.txt',
+          lastModified: new Date(0),
+          stream: () => new Response('Argo (2020). Argo float data and metadata from Global Data Assembly Centre (Argo GDAC) - Snapshot of Argo GDAC of February 10st 2020. SEANOE. https://doi.org/10.17882/42182#70590').body
+      })
+      for (let i = 0; i < files.length; i += chunkSize){
+        let chunk = files.slice(i, i + chunkSize);
+        await Promise.all(chunk.map((file) => {
+          return fetch(base + file).then(({body}) => {
+            writer.write({
+              name: `profiles/${file.split("/").pop()}`,
+              stream: () => body
+            })
           })
-          return ctrl.close()
-        }
-        const { body } = await fetch(base + value);
-        ctrl.enqueue({
-          name: `profiles/${value.split("/").pop()}`,
-          stream: () => body
-        })
-      }
-    })
-    .pipeThrough(new Zip())
-    .pipeTo(streamSaver.createWriteStream('argo_profiles.zip'));
-
+      }))
+    }
 
     writer.close();
+    })();
   }
   
   return (
@@ -121,6 +120,7 @@ const Markers = ({ loading, error, data }) => {
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error ...</p>;
+
 
   const geojson = {
     "type": "FeatureCollection",
@@ -146,7 +146,12 @@ const Markers = ({ loading, error, data }) => {
       stroke: true
     },
     zIndex: 401,
-    popup: (layer) => `<div><h3>Float ID: ${layer.properties.float_id}</h3>Profile Date: ${layer.properties.date}<br /><a href="https://argocdn.cchdo.io/202002-ArgoData/dac/${layer.properties.file}">Download netCDF</a></div>`,
+    popup: (layer) => `<div>
+    <h3>Float ID: ${layer.properties.float_id}</h3>
+    Profile Date: ${layer.properties.date}<br />
+    <a href="https://argovis.colorado.edu/catalog/platforms/${layer.properties.float_id}/page">ArgoVis Float Page</a><br />
+    <a href="https://argovis.colorado.edu/catalog/profiles/${layer.properties.float_id}_${parseInt(layer.properties.file.split("_")[1].slice(0, 3))}/page">ArgoVis Profile Page</a><br />
+    <a href="https://argocdn.cchdo.io/202002-ArgoData/dac/${layer.properties.file}">Download netCDF</a></div>`,
   }
   return <VectorGrid key={`floats_${geojson.features.length}`} {...options} />
 
